@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { errorText, supabase } from '../lib/supabase';
+import { useTitle } from '../lib/text';
 
 export default function LoginPage() {
+	useTitle('Вход');
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [error, setError] = useState('');

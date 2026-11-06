@@ -136,6 +136,18 @@ await test('не может вернуть на доработку без ком
 	const { error } = await manager.rpc('change_task_status', { p_task_id: w1Review.id, p_to: 'rework', p_comment: '   ' });
 	return Boolean(error);
 });
+await test('комментарий из невидимых символов не считается комментарием', async () => {
+	const { error } = await manager.rpc('change_task_status', { p_task_id: w1Review.id, p_to: 'rework', p_comment: '\t\n ​' });
+	return Boolean(error);
+});
+await test('не может создать объект или задачу с «невидимым» названием', async () => {
+	const a = await manager.from('objects').insert({ name: '\t ​' }).select();
+	const b = await manager.from('tasks').insert({ title: '\n﻿', object_id: w1New.object_id, assignee_id: w1Id }).select();
+	// Если вдруг создалось — убираем за собой
+	if (a.data?.length) await manager.from('objects').delete().eq('id', a.data[0].id);
+	if (b.data?.length) await manager.from('tasks').delete().eq('id', b.data[0].id);
+	return Boolean(a.error) && Boolean(b.error);
+});
 await test('не может взять задачу в работу за исполнителя', async () => {
 	const { error } = await manager.rpc('change_task_status', { p_task_id: w1New.id, p_to: 'in_progress' });
 	return Boolean(error);

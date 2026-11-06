@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useProfile } from '../auth/AuthContext';
 import StatusBadge from '../components/StatusBadge';
 import TaskForm, { type TaskValues } from '../components/TaskForm';
 import { availableActions, formatDate, STATUS_LABEL, type StatusAction } from '../lib/status';
 import { errorText, supabase } from '../lib/supabase';
+import { isBlank, MAX, useTitle } from '../lib/text';
 import { TASK_SELECT, type HistoryItem, type Task } from '../lib/types';
 
 export default function TaskPage() {
@@ -19,6 +20,13 @@ export default function TaskPage() {
 	const [comment, setComment] = useState('');
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
+	const editButton = useRef<HTMLButtonElement>(null);
+	useTitle(task?.title ?? 'Задача');
+
+	function closeEdit() {
+		setEditing(false);
+		requestAnimationFrame(() => editButton.current?.focus());
+	}
 
 	const load = useCallback(async () => {
 		const [t, h] = await Promise.all([
@@ -41,7 +49,7 @@ export default function TaskPage() {
 	// Смена статуса — только через функцию базы: она сама проверит, можно ли так
 	async function act(action: StatusAction) {
 		if (!task) return;
-		if (action.needsComment && !comment.trim()) {
+		if (action.needsComment && isBlank(comment)) {
 			setError('Напишите комментарий: что нужно доработать');
 			return;
 		}
@@ -50,11 +58,13 @@ export default function TaskPage() {
 		const { error } = await supabase.rpc('change_task_status', {
 			p_task_id: task.id,
 			p_to: action.to,
-			p_comment: comment.trim() || null,
+			p_comment: isBlank(comment) ? null : comment.trim(),
 		});
 		setBusy(false);
 		if (error) {
 			setError(errorText(error));
+			// Статус мог поменяться в другой вкладке — показываем актуальное состояние
+			await load();
 			return;
 		}
 		setComment('');
@@ -64,7 +74,7 @@ export default function TaskPage() {
 	async function save(values: TaskValues) {
 		const { error } = await supabase.from('tasks').update(values).eq('id', id!);
 		if (error) return errorText(error);
-		setEditing(false);
+		closeEdit();
 		await load();
 		return null;
 	}
@@ -80,7 +90,8 @@ export default function TaskPage() {
 	if (task === null) {
 		return (
 			<>
-				<p>Задача не найдена или нет доступа.</p>
+				<h1>Задача не найдена</h1>
+				<p>Задача удалена или у вас нет к ней доступа.</p>
 				<Link to="/tasks">← К задачам</Link>
 			</>
 		);
@@ -98,12 +109,12 @@ export default function TaskPage() {
 					initial={{ title: task.title, description: task.description, object_id: task.object_id, assignee_id: task.assignee_id }}
 					submitLabel="Сохранить"
 					onSubmit={save}
-					onCancel={() => setEditing(false)}
+					onCancel={closeEdit}
 				/>
 			) : (
 				<article className="card">
 					<div className="page-head">
-						<h1>{task.title}</h1>
+						<h1 className="page-head__main">{task.title}</h1>
 						<StatusBadge status={task.status} />
 					</div>
 					{task.description && <p className="pre">{task.description}</p>}
@@ -119,7 +130,7 @@ export default function TaskPage() {
 					</dl>
 					{isManager && (
 						<div className="actions">
-							<button className="btn" onClick={() => setEditing(true)}>Изменить</button>
+							<button ref={editButton} className="btn" onClick={() => { setError(''); setEditing(true); }}>Изменить</button>
 							<button className="btn btn--danger" onClick={remove}>Удалить</button>
 						</div>
 					)}
@@ -131,7 +142,7 @@ export default function TaskPage() {
 					<h2 id="actions-title">Действия</h2>
 					<label className="field">
 						<span>Комментарий {actions.some((a) => a.needsComment) ? '(обязателен при возврате на доработку)' : '(необязательно)'}</span>
-						<textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} />
+						<textarea rows={2} maxLength={MAX.comment} value={comment} onChange={(e) => setComment(e.target.value)} />
 					</label>
 					<div className="actions">
 						{actions.map((a) => (

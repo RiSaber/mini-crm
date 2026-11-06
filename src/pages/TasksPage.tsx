@@ -3,6 +3,7 @@ import { useProfile } from '../auth/AuthContext';
 import TaskList from '../components/TaskList';
 import { STATUS_LABEL, STATUS_ORDER } from '../lib/status';
 import { errorText, supabase } from '../lib/supabase';
+import { useTitle } from '../lib/text';
 import { TASK_SELECT, type Task, type TaskStatus } from '../lib/types';
 
 // Для исполнителя — «Мои задачи», для постановщика — все задачи
@@ -12,6 +13,7 @@ export default function TasksPage() {
 	const [tasks, setTasks] = useState<Task[] | null>(null);
 	const [filter, setFilter] = useState<TaskStatus | 'all'>('all');
 	const [error, setError] = useState('');
+	useTitle(isManager ? 'Все задачи' : 'Мои задачи');
 
 	useEffect(() => {
 		// Фильтр по исполнителю здесь для удобства; без него база всё равно не отдаст чужие задачи

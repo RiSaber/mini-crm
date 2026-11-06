@@ -7,6 +7,8 @@ interface AuthState {
 	session: Session | null;
 	profile: Profile | null;
 	loading: boolean;
+	// true после нажатия «Выйти»: тогда не запоминаем страницу для возврата после входа
+	signedOut: boolean;
 	signOut: () => Promise<void>;
 }
 
@@ -16,11 +18,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	const [session, setSession] = useState<Session | null>(null);
 	const [profile, setProfile] = useState<Profile | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [signedOut, setSignedOut] = useState(false);
 
 	useEffect(() => {
 		// Следим за входом и выходом; сессия хранится самим supabase-js
 		const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
 			setSession(s);
+			if (s) setSignedOut(false);
 			if (!s) {
 				setProfile(null);
 				setLoading(false);
@@ -51,10 +55,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 	}, [userId]);
 
 	const signOut = async () => {
+		setSignedOut(true);
 		await supabase.auth.signOut();
 	};
 
-	return <AuthContext.Provider value={{ session, profile, loading, signOut }}>{children}</AuthContext.Provider>;
+	return (
+		<AuthContext.Provider value={{ session, profile, loading, signedOut, signOut }}>{children}</AuthContext.Provider>
+	);
 }
 
 export function useAuth(): AuthState {

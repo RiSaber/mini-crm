@@ -3,9 +3,10 @@
 	--bg: #f4f5f7;
 	--surface: #ffffff;
 	--text: #1d2330;
-	--muted: #6b7280;
+	/* Цвета подобраны под контраст WCAG AA (не ниже 4.5:1) */
+	--muted: #5b6270;
 	--border: #e3e6eb;
-	--accent: #e8730c;
+	--accent: #b45309;
 	--accent-text: #ffffff;
 	--danger: #c62828;
 	--radius: 10px;
@@ -22,6 +23,33 @@
 body {
 	margin: 0;
 	background: var(--bg);
+	/* Длинное слово без пробелов переносится, а не растягивает страницу */
+	overflow-wrap: anywhere;
+}
+
+.main:focus {
+	outline: none;
+}
+
+/* Ссылка «Перейти к содержимому» видна только при фокусе с клавиатуры */
+.skip-link {
+	position: absolute;
+	left: 8px;
+	top: -48px;
+	padding: 8px 12px;
+	background: var(--surface);
+	border: 2px solid var(--accent);
+	border-radius: 8px;
+	z-index: 10;
+}
+
+.skip-link:focus {
+	top: 8px;
+}
+
+.page-head__main {
+	min-width: 0;
+	flex: 1 1 240px;
 }
 
 h1,

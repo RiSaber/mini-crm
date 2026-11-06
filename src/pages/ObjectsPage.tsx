@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useProfile } from '../auth/AuthContext';
 import ObjectForm, { type ObjectValues } from '../components/ObjectForm';
 import { errorText, supabase } from '../lib/supabase';
+import { useTitle } from '../lib/text';
 import type { CrmObject } from '../lib/types';
 
 type Row = CrmObject & { tasks: { status: string }[] };
@@ -13,6 +14,14 @@ export default function ObjectsPage() {
 	const [rows, setRows] = useState<Row[] | null>(null);
 	const [error, setError] = useState('');
 	const [creating, setCreating] = useState(false);
+	const addButton = useRef<HTMLButtonElement>(null);
+	useTitle('Объекты');
+
+	// Закрыли форму — возвращаем фокус на кнопку, которая её открыла
+	function closeForm() {
+		setCreating(false);
+		requestAnimationFrame(() => addButton.current?.focus());
+	}
 
 	// Исполнителю база сама вернёт только объекты с его задачами (и только его задачи внутри)
 	const load = useCallback(async () => {
@@ -28,7 +37,7 @@ export default function ObjectsPage() {
 	async function create(values: ObjectValues) {
 		const { error } = await supabase.from('objects').insert(values);
 		if (error) return errorText(error);
-		setCreating(false);
+		closeForm();
 		await load();
 		return null;
 	}
@@ -38,10 +47,10 @@ export default function ObjectsPage() {
 			<div className="page-head">
 				<h1>Объекты</h1>
 				{isManager && !creating && (
-					<button className="btn btn--primary" onClick={() => setCreating(true)}>+ Новый объект</button>
+					<button ref={addButton} className="btn btn--primary" onClick={() => setCreating(true)}>+ Новый объект</button>
 				)}
 			</div>
-			{creating && <ObjectForm submitLabel="Создать" onSubmit={create} onCancel={() => setCreating(false)} />}
+			{creating && <ObjectForm submitLabel="Создать" onSubmit={create} onCancel={closeForm} />}
 			{error && <p className="error" role="alert">{error}</p>}
 			{!rows && !error && <p className="muted">Загрузка…</p>}
 			{rows && rows.length === 0 && (

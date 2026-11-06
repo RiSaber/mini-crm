@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { supabase } from '../lib/supabase';
+import { isBlank, MAX } from '../lib/text';
 import type { CrmObject, Profile } from '../lib/types';
 
 export interface TaskValues {
@@ -41,21 +42,31 @@ export default function TaskForm({ initial, fixedObjectId, submitLabel, onSubmit
 
 	async function submit(e: FormEvent) {
 		e.preventDefault();
+		// Строка из одних пробелов проходит атрибут required, поэтому проверяем сами
+		if (isBlank(values.title)) return setError('Укажите название задачи');
+		if (!values.object_id) return setError('Выберите объект');
+		if (!values.assignee_id) return setError('Выберите исполнителя');
 		setBusy(true);
+		setError('');
 		const err = await onSubmit({ ...values, title: values.title.trim(), description: values.description.trim() });
 		setBusy(false);
 		if (err) setError(err);
 	}
 
+	// Esc закрывает форму
+	function onKeyDown(e: KeyboardEvent) {
+		if (e.key === 'Escape') onCancel();
+	}
+
 	return (
-		<form className="card form" onSubmit={submit}>
+		<form className="card form" onSubmit={submit} onKeyDown={onKeyDown} noValidate>
 			<label className="field">
 				<span>Название</span>
-				<input required value={values.title} onChange={set('title')} />
+				<input required autoFocus maxLength={MAX.name} value={values.title} onChange={set('title')} />
 			</label>
 			<label className="field">
 				<span>Описание</span>
-				<textarea rows={3} value={values.description} onChange={set('description')} />
+				<textarea rows={3} maxLength={MAX.description} value={values.description} onChange={set('description')} />
 			</label>
 			{!fixedObjectId && (
 				<label className="field">
